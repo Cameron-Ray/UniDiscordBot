@@ -2,12 +2,11 @@ import os
 from datetime import datetime, timedelta
 
 import discord
+from dotenv import load_dotenv
 
 import messages
 
-# from dotenv import load_dotenv
-
-# load_dotenv()
+load_dotenv()
 
 
 class EEEBot(discord.Client):
