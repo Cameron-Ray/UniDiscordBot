@@ -301,7 +301,7 @@ class EEEBot(discord.Client):
         ###################
         if msg.content.startswith('!EEE') or msg.content.startswith('!EE') or msg.content.startswith('!E') or msg.content.startswith('!'):
             await msg.channel.send(embed=discord.Embed(description='''Sorry, that command isn\'t correct, available or you don\'t have the permissions to use it here!
-            
+
             Please make sure that you use the command prefix "!EEE" and the relevant command. Type "!EEE help" for some more hlp on this.'''))
             return
 
@@ -326,9 +326,8 @@ class EEEBot(discord.Client):
             newProjectsChannel = self.get_channel(self.newProjectsChannelID)
 
             if payload.emoji.name == '👍':
-                approvalMsg = await hobbyRequestsChannel.fetch_message(
-                    payload.message_id)
-                approvalMsg = approvalMsg.content
+                newApprovalMsg = await hobbyRequestsChannel.fetch_message(payload.message_id)
+                approvalMsg = newApprovalMsg.content
                 newProjectName = approvalMsg[approvalMsg.find('|') + 1:]
                 newProjectName = newProjectName[:newProjectName.find('|')]
 
@@ -349,7 +348,7 @@ class EEEBot(discord.Client):
                                                                       )
                                                   )
 
-                    await approvalMsg.delete()
+                    await newApprovalMsg.delete()
                 else:
                     await hobbyRequestsChannel.send(embed=discord.Embed(description='The action you attempeted was unsuccessful'))
 
@@ -492,11 +491,3 @@ class EEEBot(discord.Client):
 ##############
 client = EEEBot()
 client.run(os.getenv('TOKEN'))
-
-# help menu embed/commands
-# course requests (from students)
-# course adder/removal/archival
-# permissions on course add
-# delete hobby request on approve
-# project remove/archive
-# request archive access
