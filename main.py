@@ -9,6 +9,14 @@ import messages
 load_dotenv()
 
 
+def isUserAdmin(msgRoles):
+    for r in msgRoles:
+        if r.name == 'Admin':
+            return True
+
+    return False
+
+
 class EEEBot(discord.Client):
 
     # Official Bot Color
@@ -55,13 +63,6 @@ class EEEBot(discord.Client):
     tempRoleConfig = {}
 
     # check if user has admin role
-
-    def isUserAdmin(roles: any):
-        for role in roles:
-            if role.name == 'Admin':
-                return True
-
-        return False
 
     def addRoles(self, userID, stream, years, elective):
         self.userRoleManagement[userID] = []
@@ -133,8 +134,7 @@ class EEEBot(discord.Client):
         newProjectsEmbed = discord.Embed(
             description=messages.newAddAproject, color=self.BOTCOLOR)
         newProjectsEmbed.set_author(name="How To Create A New Project",
-                                    icon_url=self.user.avatar_url,
-                                    url="http://ee.uct.ac.za")
+                                    icon_url=self.user.avatar_url)
         await w.send(embed=newProjectsEmbed)
 
         w = self.guilds[0].get_channel(self.welcomeChannelID)
@@ -147,14 +147,11 @@ class EEEBot(discord.Client):
         newStreamEmbed = discord.Embed(description=messages.newStream,
                                        color=self.BOTCOLOR)
         newWelcomeEmbed.set_author(name="Welcome and Rules!",
-                                   icon_url=self.user.avatar_url,
-                                   url="http://ee.uct.ac.za")
+                                   icon_url=self.user.avatar_url)
         newYOSEmbed.set_author(name="Select A Year Of Study",
-                               icon_url=self.user.avatar_url,
-                               url="http://ee.uct.ac.za")
+                               icon_url=self.user.avatar_url)
         newStreamEmbed.set_author(name="Select Your Stream",
-                                  icon_url=self.user.avatar_url,
-                                  url="http://ee.uct.ac.za")
+                                  icon_url=self.user.avatar_url)
 
         await w.send(embed=newWelcomeEmbed)
         m2 = await w.send(embed=newYOSEmbed)
@@ -179,11 +176,13 @@ class EEEBot(discord.Client):
         self.yearOfStudyMessageID = m2.id
         self.streamMessageID = m3.id
 
+        botAct = discord.CustomActivity('Listening to !EEE')
+        await self.change_presence(status=discord.Status.online,
+                                   activity=botAct)
+
         await self.guilds[0].get_channel(
             self.adminCtrlChannelID
-        ).send('EEE Bot Online on ' +
-               datetime.now().strftime("%d/%m/%Y @ %H:%M:%S"))
-
+        ).send(embed=discord.Embed(description='EEE Bot Online on ' + datetime.now().strftime("%d/%m/%Y @ %H:%M:%S"), color=self.BOTCOLOR))
         return
 
     ####################
@@ -240,7 +239,7 @@ class EEEBot(discord.Client):
         #######################
         if msg.content.startswith(
                 '!EEE AddProject '
-        ) and msg.channel.id == self.newProjectsChannelID:
+        ) and msg.channel.id == self.newProjectsChannelID and msg.channel.category == self.guilds[0].categories[9]:
             cmdContent = msg.content.split('!EEE AddProject ')[1]
             newProjectName = cmdContent[0:cmdContent.find(' ')]
             projectDescription = cmdContent.split(newProjectName + ' ')[1]
@@ -252,30 +251,31 @@ class EEEBot(discord.Client):
                 '|\n\n' + projectDescription)
             await approvalMessage.add_reaction(self.emojis['thumbup'])
             await approvalMessage.add_reaction(self.emojis['thumbdown'])
-            await msg.channel.send('Your request to create ' + newProjectName +
-                                   ' has been successfully submitted!')
+            await msg.channel.send(embed=discord.Embed(description='Your request to create ' + newProjectName +
+                                   ' has been successfully submitted!'))
             return
 
         ##########################
-        # Remove Project Command #
+        # Delete Project Command #
         ##########################
-        if msg.content.startswith('!EEE RemoveProject '):
-            cmdContent = msg.content.split('!EEE RemoveProject ')[1]
-            # newProjectName = cmdContent[0:cmdContent.find(' ')]
-            # projectDescription = cmdContent.split(newProjectName + ' ')[1]
-            # projectDescription = projectDescription[1:len(
-            #     projectDescription)-1]
+        if msg.content.startswith('!EEE DeleteThisProject ') and msg.channel.category == self.guilds[0].categories[9] and msg.channel.id != self.newProjectsChannelID:
+            deleteReason = msg.content.split('!EEE DeleteThisProject ')[1]
+            if deleteReason != '':
+                vcName = msg.channel.name + '-voice'
 
-            # approvalMessage = await hobbyRequestsChannel.send('Approval needed for new project: \n\n |' + newProjectName + '|\n\n' + projectDescription)
-            # await approvalMessage.add_reaction('👍')
-            # await approvalMessage.add_reaction('👎')
-            # await msg.channel.send('Your request to create ' + newProjectName + ' has been successfully submitted!')
+                for vc in msg.channel.category.voice_channels:
+                    if vc.name == vcName:
+                        await vc.delete(reason=deleteReason)
+                        await msg.channel.delete(reason=deleteReason)
+            else:
+                await msg.channel.send(embed=discord.Embed(description='Please provide a valid description for the deletion!'))
+
             return
 
         #########################
         # Clear Channel Command #
         #########################
-        if msg.content.startswith('!EEE clearChannel') and self.isUserAdmin(
+        if msg.content.startswith('!EEE clearChannel') and isUserAdmin(
                 msg.author.roles):
             timeInstant = datetime.now() + timedelta(seconds=60)
 
@@ -289,8 +289,8 @@ class EEEBot(discord.Client):
         ################
         # Help Command #
         ################
-        if msg.content.startswith('!EEE Help') or msg.content.startswith(
-                '!EEE help') or msg.content.startswith('!EEE HELP'):
+        # or msg.content.startswith('!EEE help') or msg.content.startswith('!EEE HELP'):
+        if msg.content.upper().startswith('!EEE HELP'):
             helpEmbed = discord.Embed(title="EEE Bot - Help Menu",
                                       description="Coming Soon!")
             await msg.channel.send(embed=helpEmbed)
@@ -299,10 +299,10 @@ class EEEBot(discord.Client):
         ###################
         # Invalid Command #
         ###################
-        if msg.content.startswith('!EEE'):
-            await msg.channel.send(
-                'Sorry, that command isn\'t correct/available or you dont have the permissions to use it here!'
-            )
+        if msg.content.startswith('!EEE') or msg.content.startswith('!EE') or msg.content.startswith('!E') or msg.content.startswith('!'):
+            await msg.channel.send(embed=discord.Embed(description='''Sorry, that command isn\'t correct, available or you don\'t have the permissions to use it here!
+            
+            Please make sure that you use the command prefix "!EEE" and the relevant command. Type "!EEE help" for some more hlp on this.'''))
             return
 
     ######################
@@ -332,32 +332,37 @@ class EEEBot(discord.Client):
                 newProjectName = approvalMsg[approvalMsg.find('|') + 1:]
                 newProjectName = newProjectName[:newProjectName.find('|')]
 
-                hobbyCategory = guild.categories[3]
+                hobbyCategory = guild.categories[9]
                 textCreated = await guild.create_text_channel(
                     newProjectName, category=hobbyCategory)
                 voiceCreated = await guild.create_voice_channel(
                     newProjectName + '-voice', category=hobbyCategory)
 
                 if textCreated != None and voiceCreated != None:
-                    await newProjectsChannel.send(
-                        'Your project, ***' + newProjectName +
-                        '***, was approved!\n\nYou can now use the text and voice channel related to this.'
-                    )
+                    projectCreatedEmbed = discord.Embed(
+                        description=messages.deleteAProject, color=self.BOTCOLOR)
+                    projectCreatedEmbed.set_author(name="Congrats on creating your new project: " + newProjectName,
+                                                   icon_url=self.user.avatar_url)
+                    await textCreated.send(embed=projectCreatedEmbed)
+                    await newProjectsChannel.send(embed=discord.Embed(description='Your project, ***' + newProjectName +
+                                                                      '***, was approved!\n\nYou can now use the text and voice channel related to this.'
+                                                                      )
+                                                  )
+
+                    await approvalMsg.delete()
                 else:
-                    await hobbyRequestsChannel.send(
-                        'The action you attempeted was unsuccessful')
+                    await hobbyRequestsChannel.send(embed=discord.Embed(description='The action you attempeted was unsuccessful'))
 
             if payload.emoji.name == '👎':
                 approvalMsg = await hobbyRequestsChannel.fetch_message(
                     payload.message_id)
-                await hobbyRequestsChannel.delete_messages([approvalMsg])
+                await approvalMsg.delete()
 
                 approvalMsg = approvalMsg.content
                 newProjectName = approvalMsg[approvalMsg.find('|') + 1:]
                 newProjectName = newProjectName[:newProjectName.find('|')]
-                await newProjectsChannel.send(
-                    'Unfortunately your project, ***' + newProjectName +
-                    '***, was not approved!')
+                await newProjectsChannel.send(embed=discord.Embed(description='Unfortunately your project, ***' + newProjectName +
+                                                                  '***, was not approved!'))
 
         #########################
         # Role Reaction Manager #
