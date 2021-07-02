@@ -533,11 +533,111 @@ class UniDiscordBot(discord.Client):
         # Help Command #
         ################
         if msg.content.upper().startswith('!EEE HELP'):
+            helpDescrip = ''
+            yearCategories = [
+                guild.categories[3], guild.categories[4], guild.categories[5], guild.categories[6]]
 
-            helpEmbed = discord.Embed(title="EEE Bot - Help Menu",
-                                      description="Coming Soon!")
+            if msg.content.upper().startswith('!EEE HELP '):
+                cmdContent = msg.content.upper().split('!EEE HELP ')
+                cmdContent = cmdContent.lower()
+
+                if msg.channel.channel.id == self.adminCtrlChannelID:
+                    if cmdContent == 'addcourse':
+                        helpDescrip = helpmsg.addCourseLong
+                    elif cmdContent == 'deletecourse':
+                        helpDescrip = helpmsg.deleteCourseLong
+                    elif cmdContent == 'archivecourse':
+                        helpDescrip = helpmsg.archiveCourseLong
+                    elif cmdContent == 'shutdown':
+                        helpDescrip = helpmsg.shutdownLong
+                    elif cmdContent == 'clearchannel':
+                        helpDescrip = helpmsg.clearChannelLong
+
+                elif msg.channel.channel.id == self.courseManagerChannelID:
+                    if cmdContent == 'addcourse':
+                        helpDescrip = helpmsg.addCourseLong
+                    elif cmdContent == 'deletecourse':
+                        helpDescrip = helpmsg.deleteCourseLong
+                    elif cmdContent == 'archivecourse':
+                        helpDescrip = helpmsg.deleteCourseLong
+
+                elif msg.channel.category == guild.categories[2]:
+                    # upcoming commands
+                    helpDescrip = ''
+
+                elif msg.channel.category in yearCategories:
+                    # upcoming commands
+                    helpDescrip = ''
+
+                elif msg.channel.category == guild.categories[9]:
+                    if cmdContent == 'addproject':
+                        helpDescrip = helpmsg.addProjectLong
+                    elif cmdContent == 'deleteproject':
+                        helpDescrip = helpmsg.deleteProjectLong
+                    elif cmdContent == 'archiveproject':
+                        helpDescrip = helpmsg.archiveProjectLong
+
+                elif msg.channel.category == guild.categories[10]:
+                    if cmdContent == 'play':
+                        helpDescrip = helpmsg.musicPlayLong
+                    elif cmdContent == 'deleteproject':
+                        helpDescrip = helpmsg.clearMusicLong
+
+            else:
+                if msg.channel.channel.id == self.adminCtrlChannelID:
+                    helpDescrip = helpmsg.generalHelp
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.shutdownShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.clearChannelShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.addCourseShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.deleteCourseShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.archiveCourseShort
+
+                if msg.channel.channel.id == self.courseManagerChannelID:
+                    helpDescrip = helpmsg.generalHelp
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.addCourseShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.deleteCourseShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.archiveCourseShort
+
+                if msg.channel.category == guild.categories[2]:
+                    helpDescrip = helpmsg.generalHelp
+                    helpDescrip = helpDescrip + '\n\n' + \
+                        'Request courses and other features coming soon!'
+
+                if msg.channel.category in yearCategories:
+                    helpDescrip = helpmsg.generalHelp
+                    helpDescrip = helpDescrip + '\n\n' + \
+                        'Request courses and other features coming soon!'
+
+                if msg.channel.category == guild.categories[9]:
+                    helpDescrip = helpmsg.generalHelp
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.addProjectShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.deleteProjectShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.archiveProjectShort
+
+                if msg.channel.category == guild.categories[10]:
+                    helpDescrip = helpmsg.generalHelp
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.musicPlayShort
+                    helpDescrip = helpDescrip + '\n\n' + helpmsg.clearMusicShort
+
+            if helpDescrip == '':
+                helpDescrip = helpmsg.noHelp
+
+            helpEmbed = discord.Embed(description=helpDescrip)
+            helpEmbed.set_author(name="EEE Bot - Help Menu",
+                                 icon_url=self.user.avatar_url)
             await msg.channel.send(embed=helpEmbed)
-            return
+
+        ##########################
+        # New Suggestion Message #
+        ##########################
+        if msg.channel.category == guild.categories[11]:
+            textchan = guild.get_channel(self.adminCtrlChannelID)
+
+            newSuggestion = discord.Embed(
+                description=msg.content + '\n\nMember: ' + msg.author.name, color=self.BOTCOLOR)
+            newSuggestion.set_author(name="Server Improvement Suggestion",
+                                     icon_url=self.user.avatar_url)
+            await textchan.send(embed=newSuggestion)
 
         ###################
         # Invalid Command #

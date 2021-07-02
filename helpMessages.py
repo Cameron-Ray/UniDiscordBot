@@ -3,6 +3,9 @@ See the list below for the commands available in this channel:"""
 
 noHelp = """Unfortunately there are no bot commands available for this channel!"""
 
+wrongHelp = """Unfortunately that is not a valid command! Either use **!EEE Help** 
+or **!EEE Help <command name>** to find out some more about the bot's commands"""
+
 shutdownShort = """**SHUTDOWN** Command:
 
 **!EEE SHUTDOWN**"""
@@ -99,3 +102,28 @@ clearChannelLong = """**ClearChannel** Command:
 This command is reserved for admins only and can be 
 used to clear entire text channels. ***(NB! This is a
 destructive action and cannot be undone!)***"""
+
+musicPlayShort = """**Play** Commands:
+
+**/play | $play | +play | &play**
+"""
+
+musicPlayLong = """**Play** Commands:
+
+**/play | $play | +play | &play**
+
+Please refrain from using 2 bots in the same text channel and please respect
+others who are already using the bot. Ask them if you may use the music bot before
+moving it to another room."""
+
+clearMusicShort = """**ClearMusic** Command:
+
+**!EEE ClearMusic**"""
+
+clearMusicLong = """**ClearMusic** Command:
+
+**!EEE ClearMusic**
+
+To clear the music channel of all messages to start from fresh please use
+the following command:
+"""

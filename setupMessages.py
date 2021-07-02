@@ -64,3 +64,16 @@ To delete a course please use the command as follows:
 To archive a course please use the command as follows:
 
 **!EEE ArchiveCourse <Course Code> <1,2,3,4>**"""
+
+musicHelp = """You can use the following commands to play music from these channels:
+
+**/play | $play | +play | &play**
+
+Please refrain from using 2 bots in the same text channel and please respect
+others who are already using the bot. Ask them if you may use the music bot before
+moving it to another room.
+
+To clear the music channel of all messages to start from fresh please use
+the following command:
+
+**!EEE ClearMusic**"""
