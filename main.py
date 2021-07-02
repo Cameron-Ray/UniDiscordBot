@@ -1,14 +1,25 @@
+import asyncio
 import os
+import sys
 from datetime import datetime, timedelta
 
 import discord
 from dotenv import load_dotenv
 
-import messages
+import helpMessages as helpmsg
+import otherMessages as otherMsg
+import setupMessages as messages
 
 load_dotenv()
 
+# async handler config for windows due to
+# exception produced on client.close()
+if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+
+# helper function to check if
+# supplied roles contains Admin role
 def isUserAdmin(msgRoles):
     for r in msgRoles:
         if r.name == 'Admin':
@@ -17,7 +28,8 @@ def isUserAdmin(msgRoles):
     return False
 
 
-class EEEBot(discord.Client):
+# main bot class containing all functions and command events
+class UniDiscordBot(discord.Client):
 
     # Official Bot Color
     BOTCOLOR = 0x01BB22
@@ -33,6 +45,10 @@ class EEEBot(discord.Client):
     adminCtrlChannelID = int(os.getenv('adminCtrlChannelID'))
     welcomeChannelID = int(os.getenv('welcomeChannelID'))
     courseManagerChannelID = int(os.getenv('courseManagerChannelID'))
+
+    # Setup-Message Objects
+    yearOfStudyMessage = None
+    streamMessage = None
 
     # Help Messages
     helpTitle = "EEE Bot - Help"
@@ -121,24 +137,93 @@ class EEEBot(discord.Client):
 
         return
 
+    def configureChannelRoles(self, streams, year):
+        perms = {}
+
+        # First year Role
+        if year == 1:
+            if ('ee' in streams) or ('ece' in streams) or ('mtrx' in streams):
+                perms[self.serverRoles['EEE - 1st Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+        # Second year Roles
+        if year == 2:
+            if 'csc' in streams:
+                perms[self.serverRoles['CSC - 2nd Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+            if ('ee' in streams) or ('ece' in streams) or ('mtrx' in streams):
+                perms[self.serverRoles['EEE - 2nd Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+        # Third year Roles
+        if year == 3:
+            if 'ece' in streams:
+                perms[self.serverRoles['ECE - 3rd Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+            if 'ee' in streams:
+                perms[self.serverRoles['EE - 3rd Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+            if 'mtrx' in streams:
+                perms[self.serverRoles['MTRX - 3rd Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+            if 'csc' in streams:
+                perms[self.serverRoles['CSC - 3rd Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+        # Fourth year Role
+        if year == 4:
+            if 'ece' in streams:
+                perms[self.serverRoles['ECE - 4th Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+            if 'mtrx' in streams:
+                perms[self.serverRoles['MTRX - 4th Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+            if 'ee' in streams:
+                perms[self.serverRoles['EE - 4th Year']
+                      ] = discord.PermissionOverwrite(view_channel=True)
+
+        return perms
+
     ##################
     # On Ready Event #
     ##################
 
     async def on_ready(self):
+        # get bot's guild
+        guild = self.guilds[0]
+
+        # Purge time set to 60mins ahead to ensure all msgs are deleted
         timeInstant = datetime.now() + timedelta(minutes=60)
 
-        w = self.guilds[0].get_channel(self.newProjectsChannelID)
-        await w.purge(before=timeInstant)
+        # New Projects Channel Setup with Custom message
+        textchan = guild.get_channel(self.newProjectsChannelID)
+        await textchan.purge(before=timeInstant)
 
         newProjectsEmbed = discord.Embed(
             description=messages.newAddAproject, color=self.BOTCOLOR)
         newProjectsEmbed.set_author(name="How To Create A New Project",
                                     icon_url=self.user.avatar_url)
-        await w.send(embed=newProjectsEmbed)
+        await textchan.send(embed=newProjectsEmbed)
 
-        w = self.guilds[0].get_channel(self.welcomeChannelID)
-        await w.purge(before=timeInstant)
+        # Course Manager Channel Setup with Custom message
+        textchan = guild.get_channel(self.courseManagerChannelID)
+        await textchan.purge(before=timeInstant)
+
+        newCourseEmbed = discord.Embed(
+            description=messages.courseManagement, color=self.BOTCOLOR)
+        newCourseEmbed.set_author(name="How To Manage Courses",
+                                  icon_url=self.user.avatar_url)
+        await textchan.send(embed=newCourseEmbed)
+
+        # Welcome/Rules Channel Setup with Custom message
+        textchan = guild.get_channel(self.welcomeChannelID)
+        await textchan.purge(before=timeInstant)
 
         newWelcomeEmbed = discord.Embed(description=messages.newWelcome,
                                         color=self.BOTCOLOR)
@@ -153,9 +238,9 @@ class EEEBot(discord.Client):
         newStreamEmbed.set_author(name="Select Your Stream",
                                   icon_url=self.user.avatar_url)
 
-        await w.send(embed=newWelcomeEmbed)
-        m2 = await w.send(embed=newYOSEmbed)
-        m3 = await w.send(embed=newStreamEmbed)
+        await textchan.send(embed=newWelcomeEmbed)
+        m2 = await textchan.send(embed=newYOSEmbed)
+        m3 = await textchan.send(embed=newStreamEmbed)
 
         await m2.clear_reactions()
         await m2.add_reaction(self.emojis[1])
@@ -170,17 +255,27 @@ class EEEBot(discord.Client):
         await m3.add_reaction(self.emojis["mtrx"])
         await m3.add_reaction(self.emojis["csc"])
 
-        for role in self.guilds[0].roles:
+        # obtain server roles and store in dict
+        # formatting of dict -> 'role name': roleObject
+        for role in guild.roles:
             self.serverRoles[role.name] = role
 
+        # save msg IDs of newly generated messages
         self.yearOfStudyMessageID = m2.id
         self.streamMessageID = m3.id
 
-        botAct = discord.CustomActivity('Listening to !EEE')
+        # save msg objects of newly generated messages
+        self.yearOfStudyMessage = m2
+        self.streamMessage = m3
+
+        # set custom bot presence to show bot command
+        botAct = discord.Activity(
+            name='!EEE', type=discord.ActivityType.listening)
         await self.change_presence(status=discord.Status.online,
                                    activity=botAct)
 
-        await self.guilds[0].get_channel(
+        # notify admin channel that bot is online
+        await guild.get_channel(
             self.adminCtrlChannelID
         ).send(embed=discord.Embed(description='EEE Bot Online on ' + datetime.now().strftime("%d/%m/%Y @ %H:%M:%S"), color=self.BOTCOLOR))
         return
@@ -198,7 +293,15 @@ class EEEBot(discord.Client):
         # get channel objects
         hobbyRequestsChannel = guild.get_channel(self.hobbyRequestsChannelID)
 
-        # get category objects
+        ########################
+        # Bot Shutdown Command #
+        ########################
+        if msg.content.startswith('!EEE SHUTDOWN') and msg.channel.id == self.adminCtrlChannelID and isUserAdmin(msg.author.roles):
+            await self.yearOfStudyMessage.channel.send(embed=discord.Embed(description=otherMsg.maintenanceOffline))
+            await self.yearOfStudyMessage.delete()
+            await self.streamMessage.delete()
+            await self.close()
+            return
 
         ######################
         # Add Course Command #
@@ -212,26 +315,133 @@ class EEEBot(discord.Client):
             if len(courseDetails) == 4:
                 courseCode = courseDetails[0]
                 year = int(courseDetails[1])
-                stream = courseDetails[2]
-                elective = courseDetails[3]
+                streams = [strm.lower()
+                           for strm in courseDetails[2].split(',')]
+                elective = courseDetails[3].lower()
+
+                if len(streams) < 1:
+                    await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
+                    return
+
             else:
-                await msg.channel.send(
-                    'That command is invalid, please try again!')
+                await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
                 return
 
-            yearCategory = guild.categories[year + 3]
+            if elective == 'n':
+                cat = guild.categories[year + 2]
+                owrites = self.configureChannelRoles(streams, year)
+
+            else:
+                cat = guild.categories[7]
+                owrites = None
 
             textCreated = await guild.create_text_channel(
-                courseCode, category=yearCategory)
+                courseCode, category=cat)
             voiceCreated = await guild.create_voice_channel(
-                courseCode + '-voice', category=yearCategory)
+                courseCode + '-voice', category=cat, overwrites=owrites)
 
             if textCreated != None and voiceCreated != None:
-                await msg.channel.send('Created Course Channels for ' +
-                                       courseCode)
+                await msg.channel.send(embed=discord.Embed(description='Created course channels for ' +
+                                       courseCode))
             else:
                 await hobbyRequestsChannel.send(
                     'Unable to create course channels for ' + courseCode)
+
+            return
+
+        ##########################
+        # Delete Course Command #
+        ##########################
+        if msg.content.startswith('!EEE DeleteCourse ') and (
+                msg.channel.id == self.adminCtrlChannelID
+                or msg.channel.id == self.courseManagerChannelID):
+
+            cmdContent = msg.content.split('!EEE DeleteCourse ')
+            courseToDelete = cmdContent[1].split(' ')[0]
+            try:
+                yearToDelete = int(cmdContent[1].split(' ')[1])
+            except:
+                await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
+                return
+
+            if courseToDelete != '':
+                tcName = courseToDelete
+                vcName = courseToDelete + '-voice'
+
+                yearList = {
+                    1: guild.categories[3],
+                    2: guild.categories[4],
+                    3: guild.categories[5],
+                    4: guild.categories[6]
+                }
+
+                vcResult = False
+                tcResult = False
+
+                for vc in yearList[yearToDelete].voice_channels:
+                    if vc.name == vcName:
+                        await vc.delete(reason='Admin deleted this channel manually')
+                        vcResult = True
+
+                for tc in yearList[yearToDelete].text_channels:
+                    if tc.name == tcName:
+                        await tc.delete(reason='Admin deleted this channel manually')
+                        tcResult = True
+
+                if not tcResult or not vcResult:
+                    await msg.channel.send(embed=discord.Embed(description='The specified course could not be found'))
+                    return
+            else:
+                await msg.channel.send(embed=discord.Embed(description='Please provide a valid description for the deletion!'))
+
+            return
+
+        ##########################
+        # Archive Course Command #
+        ##########################
+        if msg.content.startswith('!EEE ArchiveCourse ') and (
+                msg.channel.id == self.adminCtrlChannelID
+                or msg.channel.id == self.courseManagerChannelID):
+
+            cmdContent = msg.content.split('!EEE ArchiveCourse ')
+            courseToArchive = cmdContent[1].split(' ')[0]
+            try:
+                yearToArchive = int(cmdContent[1].split(' ')[1])
+            except:
+                await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
+                return
+
+            if courseToArchive != '':
+                tcName = courseToArchive
+                vcName = courseToArchive + '-voice'
+
+                yearList = {
+                    1: guild.categories[3],
+                    2: guild.categories[4],
+                    3: guild.categories[5],
+                    4: guild.categories[6]
+                }
+
+                vcResult = False
+                tcResult = False
+
+                for vc in yearList[yearToArchive].voice_channels:
+                    if vc.name == vcName:
+                        await vc.delete(reason='Admin archived this channel manually')
+                        vcResult = True
+
+                for tc in yearList[yearToArchive].text_channels:
+                    if tc.name == tcName:
+                        tc.edit(
+                            category=guild.categories[len(guild.categories)-2], sync_permissions=True)
+                        tcResult = True
+
+                if not tcResult or not vcResult:
+                    await msg.channel.send(embed=discord.Embed(description='The specified course could not be found'))
+                    return
+            else:
+                await msg.channel.send(embed=discord.Embed(description='Please provide a valid description for the archival!'))
+
             return
 
         #######################
@@ -239,7 +449,7 @@ class EEEBot(discord.Client):
         #######################
         if msg.content.startswith(
                 '!EEE AddProject '
-        ) and msg.channel.id == self.newProjectsChannelID and msg.channel.category == self.guilds[0].categories[9]:
+        ) and msg.channel.id == self.newProjectsChannelID and msg.channel.category == guild.categories[9]:
             cmdContent = msg.content.split('!EEE AddProject ')[1]
             newProjectName = cmdContent[0:cmdContent.find(' ')]
             projectDescription = cmdContent.split(newProjectName + ' ')[1]
@@ -258,24 +468,57 @@ class EEEBot(discord.Client):
         ##########################
         # Delete Project Command #
         ##########################
-        if msg.content.startswith('!EEE DeleteThisProject ') and msg.channel.category == self.guilds[0].categories[9] and msg.channel.id != self.newProjectsChannelID:
+        if msg.content.startswith('!EEE DeleteThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
             deleteReason = msg.content.split('!EEE DeleteThisProject ')[1]
             if deleteReason != '':
                 vcName = msg.channel.name + '-voice'
+
+                result = False
 
                 for vc in msg.channel.category.voice_channels:
                     if vc.name == vcName:
                         await vc.delete(reason=deleteReason)
                         await msg.channel.delete(reason=deleteReason)
+                        result = True
+
+                if not result:
+                    await msg.channel.send(embed=discord.Embed(description='The specified project could not be found'))
+                    return
             else:
                 await msg.channel.send(embed=discord.Embed(description='Please provide a valid description for the deletion!'))
+
+            return
+
+        ##########################
+        # Archive Project Command #
+        ##########################
+        if msg.content.startswith('!EEE ArchiveThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
+            archiveReason = msg.content.split('!EEE DeleteThisProject ')[1]
+
+            if archiveReason != '':
+                vcName = msg.channel.name + '-voice'
+
+                result = False
+
+                for vc in msg.channel.category.voice_channels:
+                    if vc.name == vcName:
+                        await vc.delete(reason=archiveReason)
+                        msg.channel.edit(category=guild.categories[len(
+                            guild.categories)-1], sync_permissions=True)
+                        result = True
+
+                if not result:
+                    await msg.channel.send(embed=discord.Embed(description='The specified project could not be found'))
+                    return
+            else:
+                await msg.channel.send(embed=discord.Embed(description='Please provide a valid description for the archival!'))
 
             return
 
         #########################
         # Clear Channel Command #
         #########################
-        if msg.content.startswith('!EEE clearChannel') and isUserAdmin(
+        if msg.content.startswith('!EEE ClearChannel') and isUserAdmin(
                 msg.author.roles):
             timeInstant = datetime.now() + timedelta(seconds=60)
 
@@ -289,8 +532,8 @@ class EEEBot(discord.Client):
         ################
         # Help Command #
         ################
-        # or msg.content.startswith('!EEE help') or msg.content.startswith('!EEE HELP'):
         if msg.content.upper().startswith('!EEE HELP'):
+
             helpEmbed = discord.Embed(title="EEE Bot - Help Menu",
                                       description="Coming Soon!")
             await msg.channel.send(embed=helpEmbed)
@@ -339,7 +582,7 @@ class EEEBot(discord.Client):
 
                 if textCreated != None and voiceCreated != None:
                     projectCreatedEmbed = discord.Embed(
-                        description=messages.deleteAProject, color=self.BOTCOLOR)
+                        description=messages.manageProject, color=self.BOTCOLOR)
                     projectCreatedEmbed.set_author(name="Congrats on creating your new project: " + newProjectName,
                                                    icon_url=self.user.avatar_url)
                     await textCreated.send(embed=projectCreatedEmbed)
@@ -465,8 +708,6 @@ class EEEBot(discord.Client):
                     self.tempRoleConfig[payload.user_id]['years'].remove(4)
                 if payload.emoji.name == self.emojis['E']:
                     self.tempRoleConfig[payload.user_id]['elective'] = False
-                if self.tempRoleConfig[payload.user_id]['years'] == []:
-                    self.tempRoleConfig[payload.user_id]['years'] = None
 
             if payload.message_id == self.streamMessageID:
                 self.tempRoleConfig[payload.user_id]['stream'] = None
@@ -489,5 +730,5 @@ class EEEBot(discord.Client):
 ##############
 # Client run #
 ##############
-client = EEEBot()
+client = UniDiscordBot()
 client.run(os.getenv('TOKEN'))

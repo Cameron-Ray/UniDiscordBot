@@ -33,7 +33,7 @@ newStream = """• You can change this at any point
 
 newAddAproject = """Hi electronics enthusiasts! Please make use of this channel to request for an additional project to be created. If you're working as a team this is the perfect place to get started. All projects are public for all EEE students to see and we would really like to see this area grow! Make use of the command ***!EEE AddProject*** to get started. This is how the command works:
 
-***!EEE AddProject <project-name-with-dashes> "<short description>"***
+***!EEE AddProject <project-name-with-dashes> "<short description in quotes>"***
 
 Here's an example:
 
@@ -41,14 +41,26 @@ Here's an example:
 
 Your project will be sent for review and, if approved, will be added as a text and voice channel under the Electronics Hobby Corner category."""
 
-deleteAProject = """Your new project has a dedicated text channel in which you are seeing this message as well as a voice channel for any discussions related to this project's topic.
+manageProject = """Your new project has a dedicated text channel in which you are seeing this message as well as a voice channel for any discussions related to this project's topic.
 
 If you ever wish to *delete* your project, use the command:
-***!EEE DeleteThisProject***
+***!EEE DeleteThisProject <reason without quotes>***
 
 If you'd prefer to *archive* the project for later retrieval, use the command:
-***!EEE ArchiveThisProject***
+***!EEE ArchiveThisProject <reason without quotes>***
 
 **Please note that the delete action is irreversible and archive retrival has to be requested via a class rep!**
 
 Good luck and enjoy!"""
+
+courseManagement = """To add a course please use the command as follows:
+
+**!EEE AddCourse <Course Code> <1,2,3,4> <EE,ECE,MTRX,CSC> <elective-Y-N>**
+
+To delete a course please use the command as follows:
+
+**!EEE DeleteCourse <Course Code> <1,2,3,4>**
+
+To archive a course please use the command as follows:
+
+**!EEE ArchiveCourse <Course Code> <1,2,3,4>**"""
