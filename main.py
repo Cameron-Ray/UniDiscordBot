@@ -339,18 +339,17 @@ class UniDiscordBot(discord.Client):
                 await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
                 return
 
-            for coursechan in msg.channel.category.text_channels:
-                if coursechan.name == courseCode:
-                    await msg.channel.send(embed=discord.Embed(description='A course with this name already exists! Delete the existing course and try again.'))
-                    return
-
             if elective == 'n':
                 cat = guild.categories[year + 2]
                 owrites = self.configureChannelRoles(streams, year)
-
             else:
                 cat = guild.categories[7]
                 owrites = None
+
+            for coursechan in cat.text_channels:
+                if coursechan.name == courseCode:
+                    await msg.channel.send(embed=discord.Embed(description='A course with this name already exists! Delete the existing course and try again.'))
+                    return
 
             textCreated = await guild.create_text_channel(
                 courseCode, category=cat, overwrites=owrites)
@@ -510,7 +509,7 @@ class UniDiscordBot(discord.Client):
         # Archive Project Command #
         ###########################
         if msg.content.startswith('!EEE ArchiveThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
-            archiveReason = msg.content.split('!EEE DeleteThisProject ')[1]
+            archiveReason = msg.content.split('!EEE ArchiveThisProject ')[1]
 
             if archiveReason != '':
                 vcName = msg.channel.name + '-voice'
