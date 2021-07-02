@@ -83,6 +83,11 @@ class UniDiscordBot(discord.Client):
     def addRoles(self, userID, stream, years, elective):
         self.userRoleManagement[userID] = []
 
+        # Electives Role
+        if elective:
+            self.userRoleManagement[userID].append(
+                self.serverRoles['Electives'])
+
         if years == None or stream == None:
             return
 
@@ -129,12 +134,6 @@ class UniDiscordBot(discord.Client):
         if 4 in years and stream == self.emojis['ee']:
             self.userRoleManagement[userID].append(
                 self.serverRoles['EE - 4th Year'])
-
-        # Electives Role
-        if elective:
-            self.userRoleManagement[userID].append(
-                self.serverRoles['Electives'])
-
         return
 
     def configureChannelRoles(self, streams, year):
@@ -683,8 +682,14 @@ class UniDiscordBot(discord.Client):
 
             newSuggestion = discord.Embed(
                 description=msg.content + '\n\nMember: ' + msg.author.name, color=self.BOTCOLOR)
-            newSuggestion.set_author(name="Server Improvement Suggestion",
-                                     icon_url=self.user.avatar_url)
+
+            if msg.channel.name == 'server-improvement':
+                newSuggestion.set_author(name="Server Improvement Suggestion",
+                                         icon_url=self.user.avatar_url)
+            else:
+                newSuggestion.set_author(name="Bug Report",
+                                         icon_url=self.user.avatar_url)
+
             await textchan.send(embed=newSuggestion)
 
             return
@@ -758,13 +763,16 @@ class UniDiscordBot(discord.Client):
         # Role Reaction Manager #
         #########################
         if payload.channel_id == self.welcomeChannelID:
-            ch = guild.get_channel(self.welcomeChannelID)
-            m = await ch.fetch_message(payload.message_id)
+            # get welcome channel and message that was reacted on
+            m = await guild.get_channel(self.welcomeChannelID).fetch_message(payload.message_id)
 
-            if not str(payload.emoji) in self.emojis.values():
+            # remove unwanted reactions from message
+            if (not str(payload.emoji) in self.emojis.values()) or (payload.message_id != self.streamMessageID and payload.message_id != self.yearOfStudyMessageID):
                 await m.remove_reaction(payload.emoji, payload.member)
                 return
 
+            # if the user reacting does not have a temp role dict
+            # create an empty one for them
             if not payload.user_id in self.tempRoleConfig:
                 self.tempRoleConfig[payload.user_id] = {
                     'years': [],
@@ -772,7 +780,7 @@ class UniDiscordBot(discord.Client):
                     'elective': False
                 }
 
-            # Set Year of study role
+            # Append years of study to 'years': []
             if payload.message_id == self.yearOfStudyMessageID:
                 if payload.emoji.name == self.emojis[1]:
                     self.tempRoleConfig[payload.user_id]['years'].append(1)
@@ -785,9 +793,11 @@ class UniDiscordBot(discord.Client):
                 if payload.emoji.name == self.emojis['E']:
                     self.tempRoleConfig[payload.user_id]['elective'] = True
 
+            # Set 'stream': '' according to reacted stream emoji
             if payload.message_id == self.streamMessageID:
                 oldStream = self.tempRoleConfig[payload.user_id]['stream']
 
+                # Remove stream reaction if a new one is selected
                 if oldStream != None:
                     if str(payload.emoji) != self.emojis['ece']:
                         await m.remove_reaction(self.emojis['ece'],
@@ -802,6 +812,7 @@ class UniDiscordBot(discord.Client):
                         await m.remove_reaction(self.emojis['csc'],
                                                 payload.member)
 
+                # check if user has any reaction selected on the stream msg
                 hasUserReacted = False
 
                 for react in m.reactions:
@@ -810,24 +821,25 @@ class UniDiscordBot(discord.Client):
                         if user.id == payload.user_id:
                             hasUserReacted = True
 
+                # if they have not reacted set the stream value to None
+                # otherwise set the stream to the reaction emoji string
                 if not hasUserReacted:
                     self.tempRoleConfig[payload.user_id]['stream'] = None
                 else:
                     self.tempRoleConfig[payload.user_id]['stream'] = str(
                         payload.emoji)
 
+            # finalise variables for addRoles function
             stream = self.tempRoleConfig[payload.user_id]['stream']
             years = self.tempRoleConfig[payload.user_id]['years']
             elective = self.tempRoleConfig[payload.user_id]['elective']
 
-            for role in payload.member.roles:
-                if role.name != '@everyone':
-                    await payload.member.remove_roles(role)
-
-            if stream != None and years != None:
+            # if the stream and years are both non Null values then assign the new roles
+            if (stream != None and years != []) or elective:
                 self.addRoles(payload.user_id, stream, years, elective)
-                for role in self.userRoleManagement[payload.user_id]:
-                    await payload.member.add_roles(role)
+                await payload.member.edit(roles=self.userRoleManagement[payload.user_id])
+            else:
+                await payload.member.edit(roles=[self.serverRoles['@everyone']])
 
     #########################
     # Reaction Remove Event #
@@ -837,6 +849,9 @@ class UniDiscordBot(discord.Client):
         guild = self.guilds[0]
         actionMember = await guild.fetch_member(payload.user_id)
 
+        # ensure that reaction removes by the bot are caught first and
+        # method is escaped as this can cause issues with permissions
+        # and incorrect users being assigned their roles
         if payload.user_id == self.user.id:
             return
 
@@ -844,7 +859,7 @@ class UniDiscordBot(discord.Client):
         # Role Reaction Manager #
         #########################
         if payload.channel_id == self.welcomeChannelID:
-            # Set Year of study role
+            # Remove year of study based on reaction emoji deselection
             if payload.message_id == self.yearOfStudyMessageID:
                 if payload.emoji.name == self.emojis[1]:
                     self.tempRoleConfig[payload.user_id]['years'].remove(1)
@@ -857,22 +872,24 @@ class UniDiscordBot(discord.Client):
                 if payload.emoji.name == self.emojis['E']:
                     self.tempRoleConfig[payload.user_id]['elective'] = False
 
+            # remove stream if reaction deselected
             if payload.message_id == self.streamMessageID:
                 self.tempRoleConfig[payload.user_id]['stream'] = None
 
+            # finalise variables for addRoles function
             stream = self.tempRoleConfig[payload.user_id]['stream']
             years = self.tempRoleConfig[payload.user_id]['years']
-
-            for role in actionMember.roles:
-                if role.name != '@everyone':
-                    await actionMember.remove_roles(role)
 
             self.addRoles(payload.user_id, stream, years,
                           self.tempRoleConfig[payload.user_id]['elective'])
 
-            if stream != None and years != None:
-                for role in self.userRoleManagement[payload.user_id]:
-                    await actionMember.add_roles(role)
+            # if the stream and years are not empty assign the roles otherwise remove all roles
+            if stream != None and years != []:
+                await actionMember.edit(roles=self.userRoleManagement[payload.user_id])
+            else:
+                await actionMember.edit(roles=[self.serverRoles['@everyone']])
+
+            return
 
 
 ##############
