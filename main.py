@@ -35,7 +35,7 @@ class UniDiscordBot(discord.Client):
     BOTCOLOR = 0x01BB22
 
     # Message IDs
-    projectsMessageID = 0
+    rulesMessageID = 0
     yearOfStudyMessageID = 0
     streamMessageID = 0
 
@@ -211,6 +211,15 @@ class UniDiscordBot(discord.Client):
                                     icon_url=self.user.avatar_url)
         await textchan.send(embed=newProjectsEmbed)
 
+        # Music Control Channels Setup with Custom message
+        for musicchan in guild.categories[10].text_channels:
+
+            musicSetupEmbed = discord.Embed(
+                description=messages.musicHelp, color=self.BOTCOLOR)
+            musicSetupEmbed.set_author(name="How To Control The Music Bots",
+                                       icon_url=self.user.avatar_url)
+            await musicchan.send(embed=musicSetupEmbed)
+
         # Course Manager Channel Setup with Custom message
         textchan = guild.get_channel(self.courseManagerChannelID)
         await textchan.purge(before=timeInstant)
@@ -314,11 +323,14 @@ class UniDiscordBot(discord.Client):
 
             if len(courseDetails) == 4:
                 courseCode = courseDetails[0]
-                year = int(courseDetails[1])
-                streams = [strm.lower()
-                           for strm in courseDetails[2].split(',')]
-                elective = courseDetails[3].lower()
-
+                try:
+                    year = int(courseDetails[1])
+                    streams = [strm.lower()
+                               for strm in courseDetails[2].split(',')]
+                    elective = courseDetails[3].lower()
+                except:
+                    await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
+                    return
                 if len(streams) < 1:
                     await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
                     return
@@ -326,6 +338,11 @@ class UniDiscordBot(discord.Client):
             else:
                 await msg.channel.send(embed=discord.Embed(description='That command is invalid, please try again!'))
                 return
+
+            for coursechan in msg.channel.category.text_channels:
+                if coursechan.name == courseCode:
+                    await msg.channel.send(embed=discord.Embed(description='A course with this name already exists! Delete the existing course and try again.'))
+                    return
 
             if elective == 'n':
                 cat = guild.categories[year + 2]
@@ -336,7 +353,7 @@ class UniDiscordBot(discord.Client):
                 owrites = None
 
             textCreated = await guild.create_text_channel(
-                courseCode, category=cat)
+                courseCode, category=cat, overwrites=owrites)
             voiceCreated = await guild.create_voice_channel(
                 courseCode + '-voice', category=cat, overwrites=owrites)
 
@@ -432,7 +449,7 @@ class UniDiscordBot(discord.Client):
 
                 for tc in yearList[yearToArchive].text_channels:
                     if tc.name == tcName:
-                        tc.edit(
+                        await tc.edit(
                             category=guild.categories[len(guild.categories)-2], sync_permissions=True)
                         tcResult = True
 
@@ -489,9 +506,9 @@ class UniDiscordBot(discord.Client):
 
             return
 
-        ##########################
+        ###########################
         # Archive Project Command #
-        ##########################
+        ###########################
         if msg.content.startswith('!EEE ArchiveThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
             archiveReason = msg.content.split('!EEE DeleteThisProject ')[1]
 
@@ -503,7 +520,7 @@ class UniDiscordBot(discord.Client):
                 for vc in msg.channel.category.voice_channels:
                     if vc.name == vcName:
                         await vc.delete(reason=archiveReason)
-                        msg.channel.edit(category=guild.categories[len(
+                        await msg.channel.edit(category=guild.categories[len(
                             guild.categories)-1], sync_permissions=True)
                         result = True
 
@@ -523,10 +540,30 @@ class UniDiscordBot(discord.Client):
             timeInstant = datetime.now() + timedelta(seconds=60)
 
             def is_not_Announcement(m):
-                return m.id != self.projectsMessageID
+                return (m.id != self.rulesMessageID and m.id != self.yearOfStudyMessageID and m.id != self.streamMessageID)
 
             await msg.channel.purge(before=timeInstant,
                                     check=is_not_Announcement)
+            return
+
+        #######################
+        # Clear Music Command #
+        #######################
+        if msg.content.startswith('!EEE ClearMusic') and msg.channel.category == guild.categories[10]:
+            timeInstant = datetime.now() + timedelta(seconds=60)
+
+            def is_not_Announcement(m):
+                return (m.id != self.rulesMessageID and m.id != self.yearOfStudyMessageID and m.id != self.streamMessageID)
+
+            await msg.channel.purge(before=timeInstant,
+                                    check=is_not_Announcement)
+
+            musicSetupEmbed = discord.Embed(
+                description=messages.musicHelp, color=self.BOTCOLOR)
+            musicSetupEmbed.set_author(name="How To Control The Music Bots",
+                                       icon_url=self.user.avatar_url)
+            await msg.channel.send(embed=musicSetupEmbed)
+
             return
 
         ################
@@ -538,10 +575,10 @@ class UniDiscordBot(discord.Client):
                 guild.categories[3], guild.categories[4], guild.categories[5], guild.categories[6]]
 
             if msg.content.upper().startswith('!EEE HELP '):
-                cmdContent = msg.content.upper().split('!EEE HELP ')
+                cmdContent = msg.content.upper().split('!EEE HELP ')[1]
                 cmdContent = cmdContent.lower()
 
-                if msg.channel.channel.id == self.adminCtrlChannelID:
+                if msg.channel.id == self.adminCtrlChannelID:
                     if cmdContent == 'addcourse':
                         helpDescrip = helpmsg.addCourseLong
                     elif cmdContent == 'deletecourse':
@@ -552,22 +589,28 @@ class UniDiscordBot(discord.Client):
                         helpDescrip = helpmsg.shutdownLong
                     elif cmdContent == 'clearchannel':
                         helpDescrip = helpmsg.clearChannelLong
+                    else:
+                        helpDescrip = helpmsg.wrongHelp
 
-                elif msg.channel.channel.id == self.courseManagerChannelID:
+                elif msg.channel.id == self.courseManagerChannelID:
                     if cmdContent == 'addcourse':
                         helpDescrip = helpmsg.addCourseLong
                     elif cmdContent == 'deletecourse':
                         helpDescrip = helpmsg.deleteCourseLong
                     elif cmdContent == 'archivecourse':
                         helpDescrip = helpmsg.deleteCourseLong
+                    else:
+                        helpDescrip = helpmsg.wrongHelp
 
                 elif msg.channel.category == guild.categories[2]:
                     # upcoming commands
-                    helpDescrip = ''
+                    helpDescrip = helpmsg.generalHelp + '\n\n' + \
+                        'Request courses and other features coming soon!'
 
                 elif msg.channel.category in yearCategories:
                     # upcoming commands
-                    helpDescrip = ''
+                    helpDescrip = helpmsg.generalHelp + '\n\n' + \
+                        'Request courses and other features coming soon!'
 
                 elif msg.channel.category == guild.categories[9]:
                     if cmdContent == 'addproject':
@@ -576,15 +619,22 @@ class UniDiscordBot(discord.Client):
                         helpDescrip = helpmsg.deleteProjectLong
                     elif cmdContent == 'archiveproject':
                         helpDescrip = helpmsg.archiveProjectLong
+                    else:
+                        helpDescrip = helpmsg.wrongHelp
 
                 elif msg.channel.category == guild.categories[10]:
                     if cmdContent == 'play':
                         helpDescrip = helpmsg.musicPlayLong
                     elif cmdContent == 'deleteproject':
                         helpDescrip = helpmsg.clearMusicLong
+                    else:
+                        helpDescrip = helpmsg.wrongHelp
+
+                else:
+                    helpDescrip == helpmsg.noHelp
 
             else:
-                if msg.channel.channel.id == self.adminCtrlChannelID:
+                if msg.channel.id == self.adminCtrlChannelID:
                     helpDescrip = helpmsg.generalHelp
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.shutdownShort
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.clearChannelShort
@@ -592,40 +642,39 @@ class UniDiscordBot(discord.Client):
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.deleteCourseShort
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.archiveCourseShort
 
-                if msg.channel.channel.id == self.courseManagerChannelID:
+                elif msg.channel.id == self.courseManagerChannelID:
                     helpDescrip = helpmsg.generalHelp
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.addCourseShort
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.deleteCourseShort
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.archiveCourseShort
 
-                if msg.channel.category == guild.categories[2]:
-                    helpDescrip = helpmsg.generalHelp
-                    helpDescrip = helpDescrip + '\n\n' + \
+                elif msg.channel.category == guild.categories[2]:
+                    helpDescrip = helpmsg.generalHelp + '\n\n' + \
                         'Request courses and other features coming soon!'
 
-                if msg.channel.category in yearCategories:
-                    helpDescrip = helpmsg.generalHelp
-                    helpDescrip = helpDescrip + '\n\n' + \
+                elif msg.channel.category in yearCategories:
+                    helpDescrip = helpmsg.generalHelp + '\n\n' + \
                         'Request courses and other features coming soon!'
 
-                if msg.channel.category == guild.categories[9]:
+                elif msg.channel.category == guild.categories[9]:
                     helpDescrip = helpmsg.generalHelp
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.addProjectShort
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.deleteProjectShort
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.archiveProjectShort
 
-                if msg.channel.category == guild.categories[10]:
+                elif msg.channel.category == guild.categories[10]:
                     helpDescrip = helpmsg.generalHelp
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.musicPlayShort
                     helpDescrip = helpDescrip + '\n\n' + helpmsg.clearMusicShort
-
-            if helpDescrip == '':
-                helpDescrip = helpmsg.noHelp
+                else:
+                    helpDescrip = helpmsg.noHelp
 
             helpEmbed = discord.Embed(description=helpDescrip)
             helpEmbed.set_author(name="EEE Bot - Help Menu",
                                  icon_url=self.user.avatar_url)
             await msg.channel.send(embed=helpEmbed)
+
+            return
 
         ##########################
         # New Suggestion Message #
@@ -639,13 +688,13 @@ class UniDiscordBot(discord.Client):
                                      icon_url=self.user.avatar_url)
             await textchan.send(embed=newSuggestion)
 
+            return
+
         ###################
         # Invalid Command #
         ###################
         if msg.content.startswith('!EEE') or msg.content.startswith('!EE') or msg.content.startswith('!E') or msg.content.startswith('!'):
-            await msg.channel.send(embed=discord.Embed(description='''Sorry, that command isn\'t correct, available or you don\'t have the permissions to use it here!
-
-            Please make sure that you use the command prefix "!EEE" and the relevant command. Type "!EEE help" for some more hlp on this.'''))
+            await msg.channel.send(embed=discord.Embed(description=otherMsg.incorrectCommand))
             return
 
     ######################

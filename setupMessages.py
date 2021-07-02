@@ -73,7 +73,7 @@ Please refrain from using 2 bots in the same text channel and please respect
 others who are already using the bot. Ask them if you may use the music bot before
 moving it to another room.
 
-To clear the music channel of all messages to start from fresh please use
+To clear the music channel of all messages, please use
 the following command:
 
 **!EEE ClearMusic**"""
