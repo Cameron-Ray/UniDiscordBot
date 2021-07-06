@@ -124,6 +124,5 @@ clearMusicLong = """**ClearMusic** Command:
 
 **!EEE ClearMusic**
 
-To clear the music channel of all messages to start from fresh please use
-the following command:
+Use this to clear the music channel of all messages.
 """
