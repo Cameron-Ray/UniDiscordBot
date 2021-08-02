@@ -417,6 +417,9 @@ class UniDiscordBot(discord.Client):
                 if not tcResult or not vcResult:
                     await msg.channel.send(embed=discord.Embed(description='The specified course could not be found'))
                     return
+                else:
+                    await msg.channel.send(embed=discord.Embed(description=courseToDelete.upper() + ' was deleted successfully!'))
+                    return
             else:
                 await msg.channel.send(embed=discord.Embed(description='Please provide a valid description for the deletion!'))
 
