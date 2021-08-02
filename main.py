@@ -137,7 +137,18 @@ class UniDiscordBot(discord.Client):
         return
 
     def configureChannelRoles(self, streams, year):
-        perms = {}
+        perms = {
+            self.serverRoles['EEE - 1st Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['CSC - 2nd Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['EEE - 2nd Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['CSC - 3rd Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['MTRX - 3rd Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['ECE - 3rd Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['EE - 3rd Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['MTRX - 4th Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['ECE - 4th Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['EE - 4th Year']: discord.PermissionOverwrite(view_channel=False),
+        }
 
         # First year Role
         if year == 1:

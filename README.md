@@ -167,6 +167,7 @@ Next you will need to install the python package requirements for the bot at the
 You may need to supply the root password for the command above. Once this has been done, navigate to the UniDiscordBot directory (this may vary from below if you cloned the repo elsewhere) and install the requirements:
 
 `cd /home/pi/UniDiscordBot`
+
 `pip install -r requirements.txt`
 
 ## **Step 3:**
