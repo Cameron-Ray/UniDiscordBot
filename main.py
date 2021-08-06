@@ -4,6 +4,7 @@ import sys
 from datetime import datetime, timedelta
 
 import discord
+from discord import embeds
 from dotenv import load_dotenv
 
 import helpMessages as helpmsg
@@ -16,6 +17,9 @@ load_dotenv()
 # exception produced on client.close()
 if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+intents = discord.Intents.default()
+intents.members = True
 
 
 # helper function to check if
@@ -31,7 +35,14 @@ def isUserAdmin(msgRoles):
 # main bot class containing all functions and command events
 class UniDiscordBot(discord.Client):
 
-    # Official Bot Color
+    if not os.path.isfile('./.env'):
+        print('Please create a .env file with the relevant channel IDs first.')
+        exit()
+
+    # Bot Prefix. Adjust this to use a different prefix in your server
+    BOTPREFIX = '!EEE'
+
+    # Official Bot Color in Hex
     BOTCOLOR = 0x01BB22
 
     # Message IDs
@@ -45,6 +56,7 @@ class UniDiscordBot(discord.Client):
     adminCtrlChannelID = int(os.getenv('adminCtrlChannelID'))
     welcomeChannelID = int(os.getenv('welcomeChannelID'))
     courseManagerChannelID = int(os.getenv('courseManagerChannelID'))
+    diagnosticsChannelID = int(os.getenv('diagnosticsChannelID'))
 
     # Setup-Message Objects
     yearOfStudyMessage = None
@@ -208,85 +220,46 @@ class UniDiscordBot(discord.Client):
         # get bot's guild
         guild = self.guilds[0]
 
-        # Purge time set to 60mins ahead to ensure all msgs are deleted
-        timeInstant = datetime.now() + timedelta(minutes=60)
+        welcomeChan = guild.get_channel(self.welcomeChannelID)
 
-        # New Projects Channel Setup with Custom message
-        textchan = guild.get_channel(self.newProjectsChannelID)
-        await textchan.purge(before=timeInstant)
+        m2 = None
+        m3 = None
 
-        newProjectsEmbed = discord.Embed(
-            description=messages.newAddAproject, color=self.BOTCOLOR)
-        newProjectsEmbed.set_author(name="How To Create A New Project",
-                                    icon_url=self.user.avatar_url)
-        await textchan.send(embed=newProjectsEmbed)
+        async for m in welcomeChan.history(oldest_first=True):
+            if m.embeds[0].author.name == 'Select A Year Of Study':
+                m2 = m
+            if m.embeds[0].author.name == 'Select Your Stream':
+                m3 = m
+            if m.embeds[0].author.name == 'Bot Offline':
+                await m.delete()
 
-        # Music Control Channels Setup with Custom message
-        for musicchan in guild.categories[10].text_channels:
+        if m2 == None and m3 == None:
+            print('There is a problem with the welcome messages')
+        else:
+            await m2.clear_reactions()
+            await m3.clear_reactions()
+            await m2.add_reaction(self.emojis[1])
+            await m2.add_reaction(self.emojis[2])
+            await m2.add_reaction(self.emojis[3])
+            await m2.add_reaction(self.emojis[4])
+            await m2.add_reaction(self.emojis["E"])
+            await m3.add_reaction(self.emojis["ee"])
+            await m3.add_reaction(self.emojis["ece"])
+            await m3.add_reaction(self.emojis["mtrx"])
+            await m3.add_reaction(self.emojis["csc"])
 
-            musicSetupEmbed = discord.Embed(
-                description=messages.musicHelp, color=self.BOTCOLOR)
-            musicSetupEmbed.set_author(name="How To Control The Music Bots",
-                                       icon_url=self.user.avatar_url)
-            await musicchan.send(embed=musicSetupEmbed)
+            # save msg IDs of newly generated messages
+            self.yearOfStudyMessageID = m2.id
+            self.streamMessageID = m3.id
 
-        # Course Manager Channel Setup with Custom message
-        textchan = guild.get_channel(self.courseManagerChannelID)
-        await textchan.purge(before=timeInstant)
-
-        newCourseEmbed = discord.Embed(
-            description=messages.courseManagement, color=self.BOTCOLOR)
-        newCourseEmbed.set_author(name="How To Manage Courses",
-                                  icon_url=self.user.avatar_url)
-        await textchan.send(embed=newCourseEmbed)
-
-        # Welcome/Rules Channel Setup with Custom message
-        textchan = guild.get_channel(self.welcomeChannelID)
-        await textchan.purge(before=timeInstant)
-
-        newWelcomeEmbed = discord.Embed(description=messages.newWelcome,
-                                        color=self.BOTCOLOR)
-        newYOSEmbed = discord.Embed(description=messages.newYOS,
-                                    color=self.BOTCOLOR)
-        newStreamEmbed = discord.Embed(description=messages.newStream,
-                                       color=self.BOTCOLOR)
-        newWelcomeEmbed.set_author(name="Welcome and Rules!",
-                                   icon_url=self.user.avatar_url)
-        newYOSEmbed.set_author(name="Select A Year Of Study",
-                               icon_url=self.user.avatar_url)
-        newStreamEmbed.set_author(name="Select Your Stream",
-                                  icon_url=self.user.avatar_url)
-
-        await textchan.send(embed=newWelcomeEmbed)
-        m2 = await textchan.send(embed=newYOSEmbed)
-        m3 = await textchan.send(embed=newStreamEmbed)
-
-        await m2.clear_reactions()
-        await m2.add_reaction(self.emojis[1])
-        await m2.add_reaction(self.emojis[2])
-        await m2.add_reaction(self.emojis[3])
-        await m2.add_reaction(self.emojis[4])
-        await m2.add_reaction(self.emojis["E"])
-
-        await m3.clear_reactions()
-        await m3.add_reaction(self.emojis["ee"])
-        await m3.add_reaction(self.emojis["ece"])
-        await m3.add_reaction(self.emojis["mtrx"])
-        await m3.add_reaction(self.emojis["csc"])
+            # save msg objects of newly generated messages
+            self.yearOfStudyMessage = m2
+            self.streamMessage = m3
 
         # obtain server roles and store in dict
-        # formatting of dict -> 'role name': roleObject
-        for role in guild.roles:
-            self.serverRoles[role.name] = role
-
-        # save msg IDs of newly generated messages
-        self.yearOfStudyMessageID = m2.id
-        self.streamMessageID = m3.id
-
-        # save msg objects of newly generated messages
-        self.yearOfStudyMessage = m2
-        self.streamMessage = m3
-
+            # formatting of dict -> 'role name': roleObject
+            for role in guild.roles:
+                self.serverRoles[role.name] = role
         # set custom bot presence to show bot command
         botAct = discord.Activity(
             name='!EEE', type=discord.ActivityType.listening)
@@ -315,20 +288,26 @@ class UniDiscordBot(discord.Client):
         ########################
         # Bot Shutdown Command #
         ########################
-        if msg.content.startswith('!EEE SHUTDOWN') and msg.channel.id == self.adminCtrlChannelID and isUserAdmin(msg.author.roles):
-            await self.yearOfStudyMessage.channel.send(embed=discord.Embed(description=otherMsg.maintenanceOffline))
-            await self.yearOfStudyMessage.delete()
-            await self.streamMessage.delete()
+        if msg.content.startswith(self.BOTPREFIX + ' SHUTDOWN') and msg.channel.id == self.adminCtrlChannelID and isUserAdmin(msg.author.roles):
+            await msg.channel.send(embed=discord.Embed(
+                description='EEE Bot has switched to offline successfully!'))
+            offlineEmbed = discord.Embed(
+                description=otherMsg.maintenanceOffline)
+            offlineEmbed.set_author(name='Bot Offline')
+            await self.yearOfStudyMessage.channel.send(embed=offlineEmbed)
+            await self.yearOfStudyMessage.clear_reactions()
+            await self.streamMessage.clear_reactions()
             await self.close()
             return
 
         ######################
         # Add Course Command #
         ######################
-        if msg.content.startswith('!EEE AddCourse ') and (
+        if msg.content.startswith(self.BOTPREFIX + ' AddCourse ') and (
                 msg.channel.id == self.adminCtrlChannelID
                 or msg.channel.id == self.courseManagerChannelID):
-            courseDetails = msg.content.split('!EEE AddCourse ')[1]
+            courseDetails = msg.content.split(
+                self.BOTPREFIX + ' AddCourse ')[1]
             courseDetails = courseDetails.split(' ')
 
             if len(courseDetails) == 4:
@@ -378,11 +357,11 @@ class UniDiscordBot(discord.Client):
         ##########################
         # Delete Course Command #
         ##########################
-        if msg.content.startswith('!EEE DeleteCourse ') and (
+        if msg.content.startswith(self.BOTPREFIX + ' DeleteCourse ') and (
                 msg.channel.id == self.adminCtrlChannelID
                 or msg.channel.id == self.courseManagerChannelID):
 
-            cmdContent = msg.content.split('!EEE DeleteCourse ')
+            cmdContent = msg.content.split(self.BOTPREFIX + ' DeleteCourse ')
             courseToDelete = cmdContent[1].split(' ')[0]
             try:
                 yearToDelete = int(cmdContent[1].split(' ')[1])
@@ -428,11 +407,11 @@ class UniDiscordBot(discord.Client):
         ##########################
         # Archive Course Command #
         ##########################
-        if msg.content.startswith('!EEE ArchiveCourse ') and (
+        if msg.content.startswith(self.BOTPREFIX + ' ArchiveCourse ') and (
                 msg.channel.id == self.adminCtrlChannelID
                 or msg.channel.id == self.courseManagerChannelID):
 
-            cmdContent = msg.content.split('!EEE ArchiveCourse ')
+            cmdContent = msg.content.split(self.BOTPREFIX + ' ArchiveCourse ')
             courseToArchive = cmdContent[1].split(' ')[0]
             try:
                 yearToArchive = int(cmdContent[1].split(' ')[1])
@@ -477,9 +456,9 @@ class UniDiscordBot(discord.Client):
         # Add Project Command #
         #######################
         if msg.content.startswith(
-                '!EEE AddProject '
+                self.BOTPREFIX + ' AddProject '
         ) and msg.channel.id == self.newProjectsChannelID and msg.channel.category == guild.categories[9]:
-            cmdContent = msg.content.split('!EEE AddProject ')[1]
+            cmdContent = msg.content.split(self.BOTPREFIX + ' AddProject ')[1]
             newProjectName = cmdContent[0:cmdContent.find(' ')]
             projectDescription = cmdContent.split(newProjectName + ' ')[1]
             projectDescription = projectDescription[1:len(projectDescription) -
@@ -492,13 +471,15 @@ class UniDiscordBot(discord.Client):
             await approvalMessage.add_reaction(self.emojis['thumbdown'])
             await msg.channel.send(embed=discord.Embed(description='Your request to create ' + newProjectName +
                                    ' has been successfully submitted!'))
+
             return
 
         ##########################
         # Delete Project Command #
         ##########################
-        if msg.content.startswith('!EEE DeleteThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
-            deleteReason = msg.content.split('!EEE DeleteThisProject ')[1]
+        if msg.content.startswith(self.BOTPREFIX + ' DeleteThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
+            deleteReason = msg.content.split(
+                self.BOTPREFIX + ' DeleteThisProject ')[1]
             if deleteReason != '':
                 vcName = msg.channel.name + '-voice'
 
@@ -521,8 +502,9 @@ class UniDiscordBot(discord.Client):
         ###########################
         # Archive Project Command #
         ###########################
-        if msg.content.startswith('!EEE ArchiveThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
-            archiveReason = msg.content.split('!EEE ArchiveThisProject ')[1]
+        if msg.content.startswith(self.BOTPREFIX + ' ArchiveThisProject ') and msg.channel.category == guild.categories[9] and msg.channel.id != self.newProjectsChannelID:
+            archiveReason = msg.content.split(
+                self.BOTPREFIX + ' ArchiveThisProject ')[1]
 
             if archiveReason != '':
                 vcName = msg.channel.name + '-voice'
@@ -544,24 +526,44 @@ class UniDiscordBot(discord.Client):
 
             return
 
-        #########################
-        # Clear Channel Command #
-        #########################
-        if msg.content.startswith('!EEE ClearChannel') and isUserAdmin(
-                msg.author.roles):
+        ##################################
+        # Clear Project Requests Command #
+        ##################################
+        if msg.content.startswith(self.BOTPREFIX + ' ClearProjectRequests') and isUserAdmin(
+                msg.author.roles) and (msg.channel.id == self.newProjectsChannelID):
             timeInstant = datetime.now() + timedelta(seconds=60)
 
-            def is_not_Announcement(m):
-                return (m.id != self.rulesMessageID and m.id != self.yearOfStudyMessageID and m.id != self.streamMessageID)
+            await msg.channel.purge(before=timeInstant)
 
-            await msg.channel.purge(before=timeInstant,
-                                    check=is_not_Announcement)
+            newProjectsEmbed = discord.Embed(
+                description=messages.newAddAproject, color=self.BOTCOLOR)
+            newProjectsEmbed.set_author(name="How To Create A New Project",
+                                        icon_url=self.user.avatar_url)
+            await msg.channel.send(embed=newProjectsEmbed)
+
+            return
+
+        ################################
+        # Clear Course Manager Command #
+        ################################
+        if msg.content.startswith(self.BOTPREFIX + ' ClearCourseManager') and isUserAdmin(
+                msg.author.roles) and (msg.channel.id == self.courseManagerChannelID):
+            timeInstant = datetime.now() + timedelta(seconds=60)
+
+            await msg.channel.purge(before=timeInstant)
+
+            newCourseEmbed = discord.Embed(
+                description=messages.courseManagement, color=self.BOTCOLOR)
+            newCourseEmbed.set_author(name="How To Manage Courses",
+                                      icon_url=self.user.avatar_url)
+            await msg.channel.send(embed=newCourseEmbed)
+
             return
 
         #######################
         # Clear Music Command #
         #######################
-        if msg.content.startswith('!EEE ClearMusic') and msg.channel.category == guild.categories[10]:
+        if msg.content.startswith(self.BOTPREFIX + ' ClearMusic') and msg.channel.category == guild.categories[10]:
             timeInstant = datetime.now() + timedelta(seconds=60)
 
             def is_not_Announcement(m):
@@ -578,16 +580,74 @@ class UniDiscordBot(discord.Client):
 
             return
 
+        #########################
+        # Clear Channel Command #
+        #########################
+        if msg.content.startswith(self.BOTPREFIX + ' ClearChannel') and isUserAdmin(
+                msg.author.roles) and (msg.channel.id != self.courseManagerChannelID) and (msg.channel.id != self.newProjectsChannelID) and (msg.channel.id != self.welcomeChannelID) and msg.channel.category != guild.categories[10]:
+            timeInstant = datetime.now() + timedelta(seconds=60)
+
+            def checkCallBack(m):
+                return True
+
+            await msg.channel.purge(before=timeInstant,
+                                    check=checkCallBack)
+
+            return
+
+        #################################
+        # Reset Welcome Channel Command #
+        #################################
+        if msg.content.startswith(self.BOTPREFIX + ' ResetWelcomeChannel') and isUserAdmin(
+                msg.author.roles) and (msg.channel.id == self.welcomeChannelID):
+            timeInstant = datetime.now() + timedelta(seconds=60)
+
+            # Welcome/Rules Channel Setup with Custom message
+            await msg.channel.purge(before=timeInstant)
+
+            newWelcomeEmbed = discord.Embed(description=messages.newWelcome,
+                                            color=self.BOTCOLOR)
+            newYOSEmbed = discord.Embed(description=messages.newYOS,
+                                        color=self.BOTCOLOR)
+            newStreamEmbed = discord.Embed(description=messages.newStream,
+                                           color=self.BOTCOLOR)
+            newWelcomeEmbed.set_author(name="Welcome and Rules!",
+                                       icon_url=self.user.avatar_url)
+            newYOSEmbed.set_author(name="Select A Year Of Study",
+                                   icon_url=self.user.avatar_url)
+            newStreamEmbed.set_author(name="Select Your Stream",
+                                      icon_url=self.user.avatar_url)
+
+            await msg.channel.send(embed=newWelcomeEmbed)
+            m2 = await msg.channel.send(embed=newYOSEmbed)
+            m3 = await msg.channel.send(embed=newStreamEmbed)
+
+            await m2.clear_reactions()
+            await m2.add_reaction(self.emojis[1])
+            await m2.add_reaction(self.emojis[2])
+            await m2.add_reaction(self.emojis[3])
+            await m2.add_reaction(self.emojis[4])
+            await m2.add_reaction(self.emojis["E"])
+
+            await m3.clear_reactions()
+            await m3.add_reaction(self.emojis["ee"])
+            await m3.add_reaction(self.emojis["ece"])
+            await m3.add_reaction(self.emojis["mtrx"])
+            await m3.add_reaction(self.emojis["csc"])
+
+            return
+
         ################
         # Help Command #
         ################
-        if msg.content.upper().startswith('!EEE HELP'):
+        if msg.content.upper().startswith(self.BOTPREFIX + ' HELP'):
             helpDescrip = ''
             yearCategories = [
                 guild.categories[3], guild.categories[4], guild.categories[5], guild.categories[6]]
 
-            if msg.content.upper().startswith('!EEE HELP '):
-                cmdContent = msg.content.upper().split('!EEE HELP ')[1]
+            if msg.content.upper().startswith(self.BOTPREFIX + ' HELP '):
+                cmdContent = msg.content.upper().split(
+                    self.BOTPREFIX + ' HELP ')[1]
                 cmdContent = cmdContent.lower()
 
                 if msg.channel.id == self.adminCtrlChannelID:
@@ -779,11 +839,16 @@ class UniDiscordBot(discord.Client):
         if payload.channel_id == self.welcomeChannelID:
             # get welcome channel and message that was reacted on
             m = await guild.get_channel(self.welcomeChannelID).fetch_message(payload.message_id)
+            actionMember = await guild.fetch_member(payload.user_id)
 
             # remove unwanted reactions from message
             if (not str(payload.emoji) in self.emojis.values()) or (payload.message_id != self.streamMessageID and payload.message_id != self.yearOfStudyMessageID):
                 await m.remove_reaction(payload.emoji, payload.member)
                 return
+
+            diagnosticsChan = guild.get_channel(self.diagnosticsChannelID)
+            memberInfoEmbed = discord.Embed(description='Name: ' + actionMember.display_name + '\n\n Reaction Added: ' +
+                                            str(payload.emoji) + '\n\n Time Reacted: ' + datetime.now().strftime("%d/%m/%Y @ %H:%M:%S"))
 
             # if the user reacting does not have a temp role dict
             # create an empty one for them
@@ -796,6 +861,8 @@ class UniDiscordBot(discord.Client):
 
             # Append years of study to 'years': []
             if payload.message_id == self.yearOfStudyMessageID:
+                memberInfoEmbed.set_author(
+                    name=actionMember.name + ' - Year Reaction Add', icon_url=actionMember.avatar_url)
                 if payload.emoji.name == self.emojis[1]:
                     self.tempRoleConfig[payload.user_id]['years'].append(1)
                 if payload.emoji.name == self.emojis[2]:
@@ -809,6 +876,9 @@ class UniDiscordBot(discord.Client):
 
             # Set 'stream': '' according to reacted stream emoji
             if payload.message_id == self.streamMessageID:
+                memberInfoEmbed.set_author(
+                    name=actionMember.name + ' - Stream Reaction Add', icon_url=actionMember.avatar_url)
+
                 oldStream = self.tempRoleConfig[payload.user_id]['stream']
 
                 # Remove stream reaction if a new one is selected
@@ -855,6 +925,10 @@ class UniDiscordBot(discord.Client):
             else:
                 await payload.member.edit(roles=[self.serverRoles['@everyone']])
 
+            await diagnosticsChan.send(embed=memberInfoEmbed)
+
+            return
+
     #########################
     # Reaction Remove Event #
     #########################
@@ -869,12 +943,18 @@ class UniDiscordBot(discord.Client):
         if payload.user_id == self.user.id:
             return
 
+        diagnosticsChan = guild.get_channel(self.diagnosticsChannelID)
+        memberInfoEmbed = discord.Embed(description='Name: ' + actionMember.display_name + '\n\n Reaction Removed: ' +
+                                        str(payload.emoji) + '\n\n Time Reacted: ' + datetime.now().strftime("%d/%m/%Y @ %H:%M:%S"))
+
         #########################
         # Role Reaction Manager #
         #########################
         if payload.channel_id == self.welcomeChannelID:
             # Remove year of study based on reaction emoji deselection
             if payload.message_id == self.yearOfStudyMessageID:
+                memberInfoEmbed.set_author(
+                    name=actionMember.name + ' - Year Reaction Remove', icon_url=actionMember.avatar_url)
                 if payload.emoji.name == self.emojis[1]:
                     self.tempRoleConfig[payload.user_id]['years'].remove(1)
                 if payload.emoji.name == self.emojis[2]:
@@ -888,6 +968,8 @@ class UniDiscordBot(discord.Client):
 
             # remove stream if reaction deselected
             if payload.message_id == self.streamMessageID:
+                memberInfoEmbed.set_author(
+                    name=actionMember.name + ' - Stream Reaction Remove', icon_url=actionMember.avatar_url)
                 self.tempRoleConfig[payload.user_id]['stream'] = None
 
             # finalise variables for addRoles function
@@ -903,11 +985,37 @@ class UniDiscordBot(discord.Client):
             else:
                 await actionMember.edit(roles=[self.serverRoles['@everyone']])
 
+            await diagnosticsChan.send(embed=memberInfoEmbed)
+
             return
+
+    #################
+    # On Join Event #
+    #################
+    async def on_member_join(self, member):
+        guild = self.guilds[0]
+        diagnosticsChan = guild.get_channel(self.diagnosticsChannelID)
+        memberInfoEmbed = discord.Embed(description='Name: ' + member.display_name + '\n\n Member Since: ' +
+                                        member.joined_at.strftime("%d/%m/%Y @ %H:%M:%S") + '\n\n Discord User Since: ' + member.created_at.strftime("%d/%m/%Y @ %H:%M:%S"))
+        memberInfoEmbed.set_author(
+            name=member.name + ' joined!', icon_url=member.avatar_url)
+        await diagnosticsChan.send(embed=memberInfoEmbed)
+
+    #################
+    # On Leave Event #
+    #################
+    async def on_member_remove(self, member):
+        guild = self.guilds[0]
+        diagnosticsChan = guild.get_channel(self.diagnosticsChannelID)
+        memberInfoEmbed = discord.Embed(
+            description='Name: ' + member.display_name)
+        memberInfoEmbed.set_author(
+            name=member.name + ' left!', icon_url=member.avatar_url)
+        await diagnosticsChan.send(embed=memberInfoEmbed)
 
 
 ##############
 # Client run #
 ##############
-client = UniDiscordBot()
+client = UniDiscordBot(intents=intents)
 client.run(os.getenv('TOKEN'))
