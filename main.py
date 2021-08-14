@@ -301,6 +301,26 @@ class UniDiscordBot(discord.Client):
             await self.close()
             return
 
+        #######################
+        # Role Report Command #
+        #######################
+        if msg.content.startswith(self.BOTPREFIX + ' ROLEREPORT') and msg.channel.id == self.adminCtrlChannelID and isUserAdmin(msg.author.roles):
+            report = ''
+
+            for cat in guild.categories:
+                report = report + "***" + cat.name + " category***"
+                for tch in cat.text_channels:
+                    report = report + tch.name + " overwrites:\n" + tch.overwrites + "\n\n"
+                for vch in cat.voice_channels:
+                    report = report + vch.name + " overwrites:\n" + vch.overwrites + "\n\n"
+
+            reportEmbed = discord.Embed(
+                description=report)
+            reportEmbed.set_author(name='Overwrites Report')
+            await msg.channel.send(embed=reportEmbed)
+
+            return
+
         ######################
         # Add Course Command #
         ######################
