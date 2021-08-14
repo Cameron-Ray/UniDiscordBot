@@ -319,14 +319,14 @@ class UniDiscordBot(discord.Client):
                     report = report + tch.name + " overwrites:\n" + \
                         str(tch.overwrites) + "\n\n"
                 
-                sendReport(report, cat.name, 'Text Channel Overwrites')
+                await sendReport(report, cat.name, 'Text Channel Overwrites')
 
                 report = "***" + cat.name + " category***"
                 for vch in cat.voice_channels:
                     report = report + vch.name + " overwrites:\n" + \
                         str(vch.overwrites) + "\n\n"
 
-                sendReport(report, cat.name, 'Voice Channel Overwrites')
+                await sendReport(report, cat.name, 'Voice Channel Overwrites')
 
             return
 
