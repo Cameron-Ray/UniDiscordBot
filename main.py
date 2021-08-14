@@ -160,6 +160,7 @@ class UniDiscordBot(discord.Client):
             self.serverRoles['MTRX - 4th Year']: discord.PermissionOverwrite(view_channel=False),
             self.serverRoles['ECE - 4th Year']: discord.PermissionOverwrite(view_channel=False),
             self.serverRoles['EE - 4th Year']: discord.PermissionOverwrite(view_channel=False),
+            self.serverRoles['@everyone']: discord.PermissionOverwrite(view_channel=False),
         }
 
         # First year Role
