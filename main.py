@@ -304,31 +304,31 @@ class UniDiscordBot(discord.Client):
         #######################
         # Role Report Command #
         #######################
-        if msg.content.startswith(self.BOTPREFIX + ' ROLEREPORT') and msg.channel.id == self.adminCtrlChannelID and isUserAdmin(msg.author.roles):
-            report = ''
+        # if msg.content.startswith(self.BOTPREFIX + ' ROLEREPORT') and msg.channel.id == self.adminCtrlChannelID and isUserAdmin(msg.author.roles):
+        #     report = ''
 
-            async def sendReport(r, c, vt):
-                reportEmbed = discord.Embed(
-                    description=r)
-                reportEmbed.set_author(name=c + ' - ' + vt)
-                await msg.channel.send(embed=reportEmbed)
+        #     async def sendReport(r, c, vt):
+        #         reportEmbed = discord.Embed(
+        #             description=r)
+        #         reportEmbed.set_author(name=c + ' - ' + vt)
+        #         await msg.channel.send(embed=reportEmbed)
 
-            for cat in guild.categories:
-                report = "***" + cat.name + " category***"
-                for tch in cat.text_channels:
-                    report = report + tch.name + " overwrites:\n" + \
-                        str(tch.overwrites) + "\n\n"
-                
-                await sendReport(report, cat.name, 'Text Channel Overwrites')
+        #     for cat in guild.categories:
+        #         report = "***" + cat.name + " category***"
+        #         for tch in cat.text_channels:
+        #             report = report + tch.name + " overwrites:\n" + \
+        #                 str(tch.overwrites) + "\n\n"
 
-                report = "***" + cat.name + " category***"
-                for vch in cat.voice_channels:
-                    report = report + vch.name + " overwrites:\n" + \
-                        str(vch.overwrites) + "\n\n"
+        #         await sendReport(report, cat.name, 'Text Channel Overwrites')
 
-                await sendReport(report, cat.name, 'Voice Channel Overwrites')
+        #         report = "***" + cat.name + " category***"
+        #         for vch in cat.voice_channels:
+        #             report = report + vch.name + " overwrites:\n" + \
+        #                 str(vch.overwrites) + "\n\n"
 
-            return
+        #         await sendReport(report, cat.name, 'Voice Channel Overwrites')
+
+        #     return
 
         ######################
         # Add Course Command #
