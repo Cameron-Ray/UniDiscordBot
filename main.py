@@ -310,9 +310,9 @@ class UniDiscordBot(discord.Client):
             for cat in guild.categories:
                 report = report + "***" + cat.name + " category***"
                 for tch in cat.text_channels:
-                    report = report + tch.name + " overwrites:\n" + tch.overwrites + "\n\n"
+                    report = report + tch.name + " overwrites:\n" + str(tch.overwrites) + "\n\n"
                 for vch in cat.voice_channels:
-                    report = report + vch.name + " overwrites:\n" + vch.overwrites + "\n\n"
+                    report = report + vch.name + " overwrites:\n" + str(vch.overwrites) + "\n\n"
 
             reportEmbed = discord.Embed(
                 description=report)
